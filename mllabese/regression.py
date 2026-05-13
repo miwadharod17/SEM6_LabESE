@@ -1,117 +1,72 @@
-# Regression using Two Models
-# Dataset created using make_regression()
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt 
 
-import pandas as pd
-import matplotlib.pyplot as plt
-
-from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LinearRegression
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-
-# ----------------------------------
-# Create Regression Dataset
-# ----------------------------------
-
-X, y = make_regression(
-    n_samples=100,
-    n_features=8,
-    noise=15,
-    random_state=42
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score
 )
 
-# Convert to DataFrame
-columns = [f"Feature_{i}" for i in range(1, 9)]
 
-df = pd.DataFrame(X, columns=columns)
+data = {
+    "Hours": [1, 2, 3, 4, np.nan, 6, 7, 8],
+    "Gender": ["M", "F", "M", "F", "M", "F", "M", "F"],
+    "Marks": [10, 20, 30, 40, 50, 60, 70, 80]
+}
 
-df["Target"] = y
+df = pd.DataFrame(data)
+print("Original Dataset:")
+print(df)
 
-print("Dataset:\n")
-print(df.head())
+#preprocessing
 
-# ----------------------------------
-# Train-Test Split
-# ----------------------------------
+imputer = SimpleImputer(strategy = 'mean')
+df["Hours"] = imputer.fit_transform(df[["Hours"]])
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42
-)
+encoder = LabelEncoder()
+df["Gender"] = encoder.fit_transform(df["Gender"])
 
-# ----------------------------------
-# 1. Linear Regression
-# ----------------------------------
 
-linear_model = LinearRegression()
+#model training
 
-linear_model.fit(X_train, y_train)
+X = df[["Hours","Gender"]]
+Y = df["Marks"]
 
-linear_pred = linear_model.predict(X_test)
+model = LinearRegression()
 
-# ----------------------------------
-# 2. Decision Tree Regression
-# ----------------------------------
+X_train , X_test , Y_train , Y_test = train_test_split(X,Y,test_size = 0.2 , random_state = 42)
+model.fit(X_train,Y_train)
+predictions = model.predict(X_test)
 
-tree_model = DecisionTreeRegressor(
-    max_depth=3,
-    random_state=42
-)
+print("\n Predictions")
+print(predictions)
 
-tree_model.fit(X_train, y_train)
+#metrics
 
-tree_pred = tree_model.predict(X_test)
+mae = mean_absolute_error(Y_test , predictions)
+mse = mean_squared_error(Y_test , predictions)
+r2 = r2_score(Y_test , predictions)
 
-# ----------------------------------
-# Evaluation
-# ----------------------------------
+print("\nMAE:", mae)
+print("MSE:", mse)
+print("R2 Score:", r2)
 
-print("\nLinear Regression")
-print("MSE:", mean_squared_error(y_test, linear_pred))
-print("R2 Score:", r2_score(y_test, linear_pred))
+#pyplot
 
-print("\nDecision Tree Regression")
-print("MSE:", mean_squared_error(y_test, tree_pred))
-print("R2 Score:", r2_score(y_test, tree_pred))
+plt.scatter(df["Hours"],df["Marks"] ,label = "Actual Data")
+plt.plot(df["Hours"], model.predict(X), marker='o')
 
-# ----------------------------------
-# Plot 1: Actual vs Predicted
-# Linear Regression
-# ----------------------------------
-
-plt.figure(figsize=(6, 5))
-
-plt.scatter(y_test, linear_pred)
-
-plt.plot(
-    [y_test.min(), y_test.max()],
-    [y_test.min(), y_test.max()]
-)
+plt.xlabel("Study Hours")
+plt.ylabel("Marks")
 
 plt.title("Linear Regression")
-plt.xlabel("Actual Values")
-plt.ylabel("Predicted Values")
+
+plt.legend()
 
 plt.show()
 
-# ----------------------------------
-# Plot 2: Actual vs Predicted
-# Decision Tree Regression
-# ----------------------------------
-
-plt.figure(figsize=(6, 5))
-
-plt.scatter(y_test, tree_pred)
-
-plt.plot(
-    [y_test.min(), y_test.max()],
-    [y_test.min(), y_test.max()]
-)
-
-plt.title("Decision Tree Regression")
-plt.xlabel("Actual Values")
-plt.ylabel("Predicted Values")
-
-plt.show()

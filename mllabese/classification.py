@@ -1,112 +1,95 @@
-# Classification using Two Models
-# Dataset created using make_classification()
-
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt 
 
-from sklearn.datasets import make_classification
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder , StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
-# ----------------------------------
-# Create Classification Dataset
-# ----------------------------------
+from sklearn.metrics import (accuracy_score , precision_score , recall_score , f1_score , confusion_matrix,classification_report)
 
-X, y = make_classification(
-    n_samples=200,
-    n_features=8,
-    n_informative=5,
-    n_redundant=2,
-    random_state=42
-)
 
-# Convert to DataFrame
-columns = [f"Feature_{i}" for i in range(1, 9)]
+data = {
+    "StudyHours": [1, 2, 3, 4, 5, np.nan, 7, 8, 2, 6],
+    "Attendance": [50, 55, 60, 65, 70, 75, 80, 90, 58, 78],
+    "Gender": ["M", "F", "M", "F", "M", "F", "M", "F", "M", "F"],
+    "Result": ["Fail", "Fail", "Fail", "Pass", "Pass",
+               "Pass", "Pass", "Pass", "Fail", "Pass"]
+}
 
-df = pd.DataFrame(X, columns=columns)
+df = pd.DataFrame(data)
 
-df["Target"] = y
 
-print("Dataset:\n")
-print(df.head())
+print("\n Original Dataset")
+print(df)
+print("Null Values")
+print(df.isnull().sum)
 
-# ----------------------------------
-# Train-Test Split
-# ----------------------------------
+#preporocessing
+imputer = SimpleImputer(strategy = 'median')
+df["StudyHours"] = imputer.fit_transform(df[["StudyHours"]])
+encode = LabelEncoder()
+df["Gender"] = encode.fit_transform(df["Gender"])
+df["Result"] = encode.fit_transform(df["Result"])
+print("\nDataset After Preprocessing:\n")
+print(df)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42
-)
 
-# ----------------------------------
-# 1. Logistic Regression
-# ----------------------------------
 
-log_model = LogisticRegression()
+#split 
 
-log_model.fit(X_train, y_train)
+X = df[["Gender","StudyHours","Attendance"]]
+Y = df["Result"]
 
-log_pred = log_model.predict(X_test)
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-# ----------------------------------
-# 2. Decision Tree Classifier
-# ----------------------------------
+X_train , X_test , Y_train , Y_test = train_test_split(X,Y,test_size = 0.3 , random_state = 40)
 
-tree_model = DecisionTreeClassifier(
-    max_depth=4,
-    random_state=42
-)
+models = {
+    "DecisionTree" : DecisionTreeClassifier(),
+    "Random Forest" : RandomForestClassifier(n_estimators = 5),
+    "SVM" : SVC(kernel='rbf')
+    
+}
 
-tree_model.fit(X_train, y_train)
+for name,model in models.items():
+    print(f"{name} model")
+    
+    model.fit(X_train,Y_train)
+    y_pred = model.predict(X_test)
+    
+    accuracy = accuracy_score(Y_test , y_pred)
+    precision = precision_score(Y_test , y_pred)
+    recall = recall_score(Y_test , y_pred)
+    f1 = f1_score(Y_test , y_pred)
+    
+    print("\nAccuracy:", accuracy)
+    print("Precision:", precision)
+    print("Recall:", recall)
+    print("F1 Score:", f1)
+    
+    print("\nClassification Report:\n")
+    print(classification_report(Y_test, y_pred))
 
-tree_pred = tree_model.predict(X_test)
+    # Confusion Matrix
+    cm = confusion_matrix(Y_test, y_pred)
 
-# ----------------------------------
-# Accuracy Scores
-# ----------------------------------
+    print("Confusion Matrix:\n")
+    print(cm)
+    
+    
+    plt.figure(figsize = (4,3))
+    sns.heatmap(cm,annot=True,fmt='d',cmap='Blues')
+    plt.title(f"{name} Confusion Matrix")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.savefig(f"{name}_confusion_matrix.png")
+    plt.show()
 
-print("\nLogistic Regression Accuracy:")
-print(accuracy_score(y_test, log_pred))
 
-print("\nDecision Tree Accuracy:")
-print(accuracy_score(y_test, tree_pred))
 
-# ----------------------------------
-# Confusion Matrix - Logistic Regression
-# ----------------------------------
-
-log_cm = confusion_matrix(y_test, log_pred)
-
-plt.figure(figsize=(5, 4))
-
-plt.imshow(log_cm)
-
-plt.title("Logistic Regression Confusion Matrix")
-plt.colorbar()
-
-plt.xlabel("Predicted")
-plt.ylabel("Actual")
-
-plt.show()
-
-# ----------------------------------
-# Confusion Matrix - Decision Tree
-# ----------------------------------
-
-tree_cm = confusion_matrix(y_test, tree_pred)
-
-plt.figure(figsize=(5, 4))
-
-plt.imshow(tree_cm)
-
-plt.title("Decision Tree Confusion Matrix")
-plt.colorbar()
-
-plt.xlabel("Predicted")
-plt.ylabel("Actual")
-
-plt.show()
