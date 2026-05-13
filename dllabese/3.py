@@ -4,6 +4,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Flatten, Dense
 from tensorflow.keras.datasets import cifar10
 import matplotlib.pyplot as plt
+import time
 
 # -----------------------------
 # LOAD DATASET
@@ -11,68 +12,132 @@ import matplotlib.pyplot as plt
 
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
-# Use small subset for faster training
-x_train = x_train[:5000]
-y_train = y_train[:5000]
+# Small subset
+x_train = x_train[:1000]
+y_train = y_train[:1000]
 
-x_test = x_test[:1000]
-y_test = y_test[:1000]
+x_test = x_test[:200]
+y_test = y_test[:200]
 
-# Resize images for VGG16
-x_train = tf.image.resize(x_train, (64,64))
-x_test = tf.image.resize(x_test, (64,64))
+# Resize images
+x_train = tf.image.resize(x_train, (32,32))
+x_test = tf.image.resize(x_test, (32,32))
 
 # Normalize
 x_train = x_train / 255.0
 x_test = x_test / 255.0
 
-# -----------------------------
-# LOAD PRETRAINED VGG16
-# -----------------------------
+# =====================================================
+# MODEL 1 : FEATURE EXTRACTION (FROZEN LAYERS)
+# =====================================================
 
-base_model = VGG16(
+base_model1 = VGG16(
     weights='imagenet',
     include_top=False,
-    input_shape=(64,64,3)
+    input_shape=(32,32,3)
 )
 
-# Freeze pretrained layers
-base_model.trainable = False
+# Freeze all layers
+base_model1.trainable = False
 
-# -----------------------------
-# CREATE MODEL
-# -----------------------------
-
-model = Sequential([
-    base_model,
+model1 = Sequential([
+    base_model1,
     Flatten(),
     Dense(128, activation='relu'),
     Dense(10, activation='softmax')
 ])
 
-# Compile model
-model.compile(
+model1.compile(
     optimizer='adam',
     loss='sparse_categorical_crossentropy',
     metrics=['accuracy']
 )
 
-# -----------------------------
-# TRAIN MODEL
-# -----------------------------
+print("\nTraining Frozen Layer Model...\n")
 
-history = model.fit(
+start = time.time()
+
+history1 = model1.fit(
     x_train,
     y_train,
     epochs=5,
     validation_data=(x_test, y_test)
 )
 
-# -----------------------------
-# EVALUATE MODEL
-# -----------------------------
+time1 = time.time() - start
 
-loss, accuracy = model.evaluate(x_test, y_test)
+loss1, acc1 = model1.evaluate(x_test, y_test)
 
-print(f"\nTest Accuracy: {accuracy:.4f}")
+# =====================================================
+# MODEL 2 : PARTIAL FINE TUNING
+# =====================================================
 
+base_model2 = VGG16(
+    weights='imagenet',
+    include_top=False,
+    input_shape=(32,32,3)
+)
+
+# Enable training
+base_model2.trainable = True
+
+# Freeze first layers only
+for layer in base_model2.layers[:15]:
+    layer.trainable = False
+
+model2 = Sequential([
+    base_model2,
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dense(10, activation='softmax')
+])
+
+model2.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+print("\nTraining Fine-Tuning Model...\n")
+
+start = time.time()
+
+history2 = model2.fit(
+    x_train,
+    y_train,
+    epochs=5,
+    validation_data=(x_test, y_test)
+)
+
+time2 = time.time() - start
+
+loss2, acc2 = model2.evaluate(x_test, y_test)
+
+# =====================================================
+# FINAL COMPARISON
+# =====================================================
+
+print("\nFINAL COMPARISON")
+print("--------------------------------")
+
+print(f"Frozen Layers Accuracy     : {acc1:.4f}")
+print(f"Fine-Tuning Accuracy       : {acc2:.4f}")
+
+print(f"\nFrozen Layers Time         : {time1:.2f} sec")
+print(f"Fine-Tuning Time           : {time2:.2f} sec")
+
+# =====================================================
+# PLOT GRAPH
+# =====================================================
+
+plt.plot(history1.history['accuracy'],
+         label='Frozen Layers')
+
+plt.plot(history2.history['accuracy'],
+         label='Fine Tuning')
+
+plt.title("Frozen Layers vs Fine Tuning")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
