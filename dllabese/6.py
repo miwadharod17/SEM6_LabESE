@@ -8,29 +8,9 @@ from ultralytics import YOLO
 import cv2
 import matplotlib.pyplot as plt
 
-# -----------------------------------
-# Load Pretrained YOLO Model
-# -----------------------------------
-
 model = YOLO("yolov8n.pt")   # lightweight pretrained model
-
-# -----------------------------------
-# Load Image
-# -----------------------------------
-
-image_path = "test.jpg"   # replace with your image
-
-img = cv2.imread(image_path)
-
-# -----------------------------------
-# Perform Object Detection
-# -----------------------------------
-
+image_path = "trafficdl.png"   # replace with your image
 results = model(image_path)
-
-# -----------------------------------
-# Print Detected Objects
-# -----------------------------------
 
 print("\nDetected Objects:\n")
 
@@ -52,15 +32,8 @@ for r in results:
         print(f"Confidence: {confidence:.2f}")
         print("-" * 30)
 
-# -----------------------------------
-# Show Detection Result
-# -----------------------------------
 
 annotated_frame = results[0].plot()
-
-# Convert BGR to RGB
-annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-
 plt.imshow(annotated_frame)
 plt.axis("off")
 plt.title("Object Detection Result")
